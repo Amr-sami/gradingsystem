@@ -56,38 +56,29 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
     const [savingStudents, setSavingStudents] = useState<Set<string>>(new Set());
     const [savedStudents, setSavedStudents] = useState<Set<string>>(new Set());
 
-    // Add student dialog
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [newStudentName, setNewStudentName] = useState('');
     const [newStudentNumber, setNewStudentNumber] = useState('');
 
-    // Edit student dialog
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [editStudentName, setEditStudentName] = useState('');
     const [editStudentNumber, setEditStudentNumber] = useState('');
 
-    // Delete confirmation dialog
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
-    // Debounce timers
     const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-    // Fetch class and students
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch class info
                 const classRes = await fetch('/api/classes');
                 if (!classRes.ok) throw new Error('Failed to fetch classes');
                 const classes = await classRes.json();
                 const currentClass = classes.find((c: ClassInfo) => c._id === classId);
-                if (currentClass) {
-                    setClassInfo(currentClass);
-                }
+                if (currentClass) setClassInfo(currentClass);
 
-                // Fetch students
                 const studentsRes = await fetch(`/api/classes/${classId}/students`);
                 if (!studentsRes.ok) throw new Error('Failed to fetch students');
                 const studentsData = await studentsRes.json();
@@ -98,25 +89,21 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
                 setLoading(false);
             }
         };
-
         fetchData();
     }, [classId]);
 
-    // Cleanup timers on unmount
     useEffect(() => {
         return () => {
             debounceTimers.current.forEach((timer) => clearTimeout(timer));
         };
     }, []);
 
-    // Calculate total and average for a student
     const calculateTotalAndAverage = (grades: number[]) => {
         const total = grades.reduce((sum, grade) => sum + grade, 0);
         const average = total / GRADES_COUNT;
         return { total, average };
     };
 
-    // Save grades to server
     const saveGrades = useCallback(async (studentId: string, grades: number[]) => {
         setSavingStudents((prev) => new Set(prev).add(studentId));
         setSavedStudents((prev) => {
@@ -135,8 +122,6 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
             if (!res.ok) throw new Error('Failed to save');
 
             setSavedStudents((prev) => new Set(prev).add(studentId));
-
-            // Clear saved status after 2 seconds
             setTimeout(() => {
                 setSavedStudents((prev) => {
                     const newSet = new Set(prev);
@@ -155,7 +140,6 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
         }
     }, []);
 
-    // Handle grade change with debounce
     const handleGradeChange = (studentId: string, gradeIndex: number, value: string) => {
         let numValue = parseInt(value) || 0;
         numValue = Math.max(MIN_GRADE, Math.min(MAX_GRADE, numValue));
@@ -170,36 +154,20 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
             })
         );
 
-        // Clear existing timer
         const existingTimer = debounceTimers.current.get(studentId);
-        if (existingTimer) {
-            clearTimeout(existingTimer);
-        }
+        if (existingTimer) clearTimeout(existingTimer);
 
-        // Set new debounce timer
         const timer = setTimeout(() => {
-            const student = students.find((s) => s._id === studentId);
-            if (student) {
-                const updatedStudent = { ...student };
-                updatedStudent.grades = [...updatedStudent.grades];
-                updatedStudent.grades[gradeIndex] = numValue;
-                saveGrades(studentId, updatedStudent.grades);
-            } else {
-                // Get current grades from state
-                setStudents((currentStudents) => {
-                    const s = currentStudents.find((st) => st._id === studentId);
-                    if (s) {
-                        saveGrades(studentId, s.grades);
-                    }
-                    return currentStudents;
-                });
-            }
+            setStudents((currentStudents) => {
+                const s = currentStudents.find((st) => st._id === studentId);
+                if (s) saveGrades(studentId, s.grades);
+                return currentStudents;
+            });
         }, 600);
 
         debounceTimers.current.set(studentId, timer);
     };
 
-    // Add student
     const handleAddStudent = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newStudentName.trim()) return;
@@ -221,13 +189,12 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
             setNewStudentName('');
             setNewStudentNumber('');
             setAddDialogOpen(false);
-            toast.success('تم إضافة الطالب بنجاح');
+            toast.success('تم إضافة الطالب');
         } catch {
             toast.error('فشل في إضافة الطالب');
         }
     };
 
-    // Edit student
     const handleEditStudent = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingStudent || !editStudentName.trim()) return;
@@ -242,21 +209,19 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
                 }),
             });
 
-            if (!res.ok) throw new Error('Failed to update student');
+            if (!res.ok) throw new Error('Failed to update');
 
             const updatedStudent = await res.json();
             setStudents((prev) =>
                 prev.map((s) => (s._id === updatedStudent._id ? updatedStudent : s))
             );
-            setEditingStudent(null);
             setEditDialogOpen(false);
-            toast.success('تم تحديث الطالب بنجاح');
+            toast.success('تم تحديث الطالب');
         } catch {
             toast.error('فشل في تحديث الطالب');
         }
     };
 
-    // Delete student
     const handleDeleteStudent = async () => {
         if (!studentToDelete) return;
 
@@ -265,18 +230,16 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
                 method: 'DELETE',
             });
 
-            if (!res.ok) throw new Error('Failed to delete student');
+            if (!res.ok) throw new Error('Failed to delete');
 
             setStudents((prev) => prev.filter((s) => s._id !== studentToDelete._id));
-            setStudentToDelete(null);
             setDeleteDialogOpen(false);
-            toast.success('تم حذف الطالب بنجاح');
+            toast.success('تم حذف الطالب');
         } catch {
             toast.error('فشل في حذف الطالب');
         }
     };
 
-    // Open edit dialog
     const openEditDialog = (student: Student) => {
         setEditingStudent(student);
         setEditStudentName(student.name);
@@ -284,13 +247,11 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
         setEditDialogOpen(true);
     };
 
-    // Open delete dialog
     const openDeleteDialog = (student: Student) => {
         setStudentToDelete(student);
         setDeleteDialogOpen(true);
     };
 
-    // Toggle sort
     const toggleSort = (field: SortField) => {
         if (sortField === field) {
             setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -300,7 +261,6 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
         }
     };
 
-    // Filter and sort students
     const filteredAndSortedStudents = students
         .filter((student) =>
             student.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -317,124 +277,91 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="text-white text-xl">جارٍ التحميل...</div>
+                <div className="text-gray-500">جارٍ التحميل...</div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen p-4 md:p-8">
-            <div className="max-w-full mx-auto">
-                {/* Header */}
-                <div className="flex flex-col gap-4 mb-6">
-                    <div className="flex items-center gap-4">
-                        <Link href="/dashboard">
-                            <Button variant="outline" size="icon" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-2xl md:text-3xl font-bold text-white">
-                                {classInfo?.name || 'الفصل'}
-                            </h1>
-                            <p className="text-white/80 text-sm">
-                                {students.length} طالب
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="flex flex-wrap gap-4 items-center">
-                        <Input
-                            placeholder="بحث عن طالب..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="max-w-xs bg-white/95"
-                        />
-
-                        <div className="flex gap-2">
-                            <Button
-                                variant={sortField === 'name' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => toggleSort('name')}
-                                className={sortField === 'name' ? '' : 'bg-white/20 border-white/30 text-white hover:bg-white/30'}
-                            >
-                                ترتيب بالاسم
-                                {sortField === 'name' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                            </Button>
-                            <Button
-                                variant={sortField === 'average' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => toggleSort('average')}
-                                className={sortField === 'average' ? '' : 'bg-white/20 border-white/30 text-white hover:bg-white/30'}
-                            >
-                                ترتيب بالمتوسط
-                                {sortField === 'average' && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
-                            </Button>
+        <div className="min-h-screen">
+            {/* Header */}
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+                <div className="max-w-full mx-auto px-4 py-4">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <Link href="/dashboard">
+                                <Button variant="ghost" size="sm">
+                                    → العودة
+                                </Button>
+                            </Link>
+                            <div className="border-r border-gray-200 h-6 hidden sm:block"></div>
+                            <div>
+                                <h1 className="text-lg font-bold text-gray-800">{classInfo?.name || 'الفصل'}</h1>
+                                <p className="text-xs text-gray-500">{students.length} طالب</p>
+                            </div>
                         </div>
 
-                        <Button
-                            onClick={() => setAddDialogOpen(true)}
-                            className="bg-white text-purple-700 hover:bg-white/90 font-bold"
-                        >
-                            <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            إضافة طالب
-                        </Button>
-
-                        <Link href={`/print/class/${classId}`} target="_blank">
-                            <Button variant="outline" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
-                                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                </svg>
-                                طباعة
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Input
+                                placeholder="بحث..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-40"
+                            />
+                            <Button variant="outline" size="sm" onClick={() => toggleSort('name')}>
+                                الاسم {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                             </Button>
-                        </Link>
+                            <Button variant="outline" size="sm" onClick={() => toggleSort('average')}>
+                                المتوسط {sortField === 'average' && (sortOrder === 'asc' ? '↑' : '↓')}
+                            </Button>
+                            <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+                                + إضافة طالب
+                            </Button>
+                            <Link href={`/print/class/${classId}`} target="_blank">
+                                <Button variant="outline" size="sm">طباعة</Button>
+                            </Link>
+                        </div>
                     </div>
                 </div>
+            </header>
 
-                {/* Grades Table */}
-                <Card className="bg-white/95 backdrop-blur-lg border-0 shadow-xl">
-                    <CardHeader className="pb-2">
-                        <CardTitle>جدول الدرجات</CardTitle>
+            {/* Main Content */}
+            <main className="p-4">
+                <Card className="bg-white">
+                    <CardHeader className="py-3 border-b">
+                        <CardTitle className="text-base">جدول الدرجات</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-0">
                         {students.length === 0 ? (
-                            <div className="text-center py-12 text-gray-500">
-                                <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                                <p className="text-lg">لا يوجد طلاب في هذا الفصل</p>
-                                <p className="text-sm mt-1">اضغط على &quot;إضافة طالب&quot; للبدء</p>
+                            <div className="text-center py-16 text-gray-500">
+                                <p className="text-lg mb-1">لا يوجد طلاب</p>
+                                <p className="text-sm">اضغط &quot;إضافة طالب&quot; للبدء</p>
                             </div>
                         ) : (
                             <div className="table-container">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="sticky right-0 bg-white z-10 min-w-[150px]">اسم الطالب</TableHead>
-                                            <TableHead className="min-w-[80px]">الرقم</TableHead>
+                                        <TableRow className="bg-gray-50">
+                                            <TableHead className="sticky right-0 bg-gray-50 z-10 font-semibold">الطالب</TableHead>
+                                            <TableHead className="text-center">الرقم</TableHead>
                                             {Array.from({ length: GRADES_COUNT }, (_, i) => (
-                                                <TableHead key={i} className="text-center min-w-[60px]">
-                                                    تقييم {i + 1}
+                                                <TableHead key={i} className="text-center text-xs font-medium">
+                                                    ت{i + 1}
                                                 </TableHead>
                                             ))}
-                                            <TableHead className="text-center min-w-[80px] bg-green-50">المجموع</TableHead>
-                                            <TableHead className="text-center min-w-[80px] bg-blue-50">المتوسط</TableHead>
-                                            <TableHead className="min-w-[100px]">الحالة</TableHead>
-                                            <TableHead className="min-w-[100px]">إجراءات</TableHead>
+                                            <TableHead className="text-center font-semibold bg-green-50">المجموع</TableHead>
+                                            <TableHead className="text-center font-semibold bg-blue-50">المتوسط</TableHead>
+                                            <TableHead className="text-center">الحالة</TableHead>
+                                            <TableHead className="text-center">-</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredAndSortedStudents.map((student) => (
-                                            <TableRow key={student._id}>
+                                            <TableRow key={student._id} className="hover:bg-gray-50">
                                                 <TableCell className="font-medium sticky right-0 bg-white z-10">
                                                     {student.name}
                                                 </TableCell>
-                                                <TableCell className="text-gray-500">
+                                                <TableCell className="text-center text-gray-400 text-sm">
                                                     {student.number || '-'}
                                                 </TableCell>
                                                 {student.grades.map((grade, index) => (
@@ -445,48 +372,41 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
                                                             max={MAX_GRADE}
                                                             value={grade}
                                                             onChange={(e) => handleGradeChange(student._id, index, e.target.value)}
-                                                            className="grade-input w-12 bg-gray-50"
+                                                            className="grade-input"
                                                         />
                                                     </TableCell>
                                                 ))}
-                                                <TableCell className="text-center font-bold bg-green-50">
+                                                <TableCell className="text-center font-bold bg-green-50 text-green-700">
                                                     {student.total}
                                                 </TableCell>
-                                                <TableCell className="text-center font-bold bg-blue-50">
-                                                    {student.average.toFixed(2)}
+                                                <TableCell className="text-center font-bold bg-blue-50 text-blue-700">
+                                                    {student.average.toFixed(1)}
                                                 </TableCell>
-                                                <TableCell>
+                                                <TableCell className="text-center">
                                                     {savingStudents.has(student._id) ? (
-                                                        <span className="save-status bg-yellow-100 text-yellow-800">
-                                                            جارٍ الحفظ...
-                                                        </span>
+                                                        <span className="save-status bg-yellow-100 text-yellow-700">جارٍ...</span>
                                                     ) : savedStudents.has(student._id) ? (
-                                                        <span className="save-status bg-green-100 text-green-800">
-                                                            تم الحفظ ✓
-                                                        </span>
+                                                        <span className="save-status bg-green-100 text-green-700">✓</span>
                                                     ) : null}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
+                                                    <div className="flex justify-center gap-1">
+                                                        <button
                                                             onClick={() => openEditDialog(student)}
+                                                            className="p-1 text-gray-400 hover:text-gray-600"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                             </svg>
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
+                                                        </button>
+                                                        <button
                                                             onClick={() => openDeleteDialog(student)}
-                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            className="p-1 text-gray-400 hover:text-red-600"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                             </svg>
-                                                        </Button>
+                                                        </button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -497,106 +417,105 @@ export default function ClassPage({ params }: { params: Promise<{ classId: strin
                         )}
                     </CardContent>
                 </Card>
+            </main>
 
-                {/* Add Student Dialog */}
-                <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                    <DialogContent className="sm:max-w-md" dir="rtl">
-                        <DialogHeader>
-                            <DialogTitle>إضافة طالب جديد</DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={handleAddStudent} className="space-y-4">
-                            <div>
-                                <Label htmlFor="studentName">اسم الطالب *</Label>
-                                <Input
-                                    id="studentName"
-                                    value={newStudentName}
-                                    onChange={(e) => setNewStudentName(e.target.value)}
-                                    placeholder="مثال: أحمد محمد"
-                                    className="mt-2"
-                                    autoFocus
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="studentNumber">رقم الطالب (اختياري)</Label>
-                                <Input
-                                    id="studentNumber"
-                                    value={newStudentNumber}
-                                    onChange={(e) => setNewStudentNumber(e.target.value)}
-                                    placeholder="مثال: 123"
-                                    className="mt-2"
-                                />
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                                <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)}>
-                                    إلغاء
-                                </Button>
-                                <Button type="submit" disabled={!newStudentName.trim()}>
-                                    إضافة
-                                </Button>
-                            </div>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Edit Student Dialog */}
-                <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                    <DialogContent className="sm:max-w-md" dir="rtl">
-                        <DialogHeader>
-                            <DialogTitle>تعديل بيانات الطالب</DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={handleEditStudent} className="space-y-4">
-                            <div>
-                                <Label htmlFor="editStudentName">اسم الطالب *</Label>
-                                <Input
-                                    id="editStudentName"
-                                    value={editStudentName}
-                                    onChange={(e) => setEditStudentName(e.target.value)}
-                                    className="mt-2"
-                                    autoFocus
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="editStudentNumber">رقم الطالب (اختياري)</Label>
-                                <Input
-                                    id="editStudentNumber"
-                                    value={editStudentNumber}
-                                    onChange={(e) => setEditStudentNumber(e.target.value)}
-                                    className="mt-2"
-                                />
-                            </div>
-                            <div className="flex gap-2 justify-end">
-                                <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
-                                    إلغاء
-                                </Button>
-                                <Button type="submit" disabled={!editStudentName.trim()}>
-                                    حفظ
-                                </Button>
-                            </div>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Delete Confirmation Dialog */}
-                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                    <DialogContent className="sm:max-w-md" dir="rtl">
-                        <DialogHeader>
-                            <DialogTitle>تأكيد الحذف</DialogTitle>
-                        </DialogHeader>
-                        <div className="py-4">
-                            <p>هل أنت متأكد من حذف الطالب &quot;{studentToDelete?.name}&quot;؟</p>
-                            <p className="text-sm text-red-600 mt-2">سيتم حذف جميع درجات هذا الطالب.</p>
+            {/* Add Student Dialog */}
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                <DialogContent className="sm:max-w-md" dir="rtl">
+                    <DialogHeader>
+                        <DialogTitle>إضافة طالب</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddStudent} className="space-y-4">
+                        <div>
+                            <Label htmlFor="studentName">الاسم</Label>
+                            <Input
+                                id="studentName"
+                                value={newStudentName}
+                                onChange={(e) => setNewStudentName(e.target.value)}
+                                placeholder="اسم الطالب"
+                                className="mt-1"
+                                autoFocus
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="studentNumber">الرقم (اختياري)</Label>
+                            <Input
+                                id="studentNumber"
+                                value={newStudentNumber}
+                                onChange={(e) => setNewStudentNumber(e.target.value)}
+                                placeholder="رقم الطالب"
+                                className="mt-1"
+                            />
                         </div>
                         <div className="flex gap-2 justify-end">
-                            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                            <Button type="button" variant="outline" onClick={() => setAddDialogOpen(false)}>
                                 إلغاء
                             </Button>
-                            <Button variant="destructive" onClick={handleDeleteStudent}>
-                                حذف
+                            <Button type="submit" disabled={!newStudentName.trim()}>
+                                إضافة
                             </Button>
                         </div>
-                    </DialogContent>
-                </Dialog>
-            </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Student Dialog */}
+            <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <DialogContent className="sm:max-w-md" dir="rtl">
+                    <DialogHeader>
+                        <DialogTitle>تعديل الطالب</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEditStudent} className="space-y-4">
+                        <div>
+                            <Label htmlFor="editStudentName">الاسم</Label>
+                            <Input
+                                id="editStudentName"
+                                value={editStudentName}
+                                onChange={(e) => setEditStudentName(e.target.value)}
+                                className="mt-1"
+                                autoFocus
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="editStudentNumber">الرقم</Label>
+                            <Input
+                                id="editStudentNumber"
+                                value={editStudentNumber}
+                                onChange={(e) => setEditStudentNumber(e.target.value)}
+                                className="mt-1"
+                            />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                            <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                                إلغاء
+                            </Button>
+                            <Button type="submit" disabled={!editStudentName.trim()}>
+                                حفظ
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Dialog */}
+            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md" dir="rtl">
+                    <DialogHeader>
+                        <DialogTitle>تأكيد الحذف</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-gray-600">حذف الطالب &quot;{studentToDelete?.name}&quot;؟</p>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                            إلغاء
+                        </Button>
+                        <Button variant="destructive" onClick={handleDeleteStudent}>
+                            حذف
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
