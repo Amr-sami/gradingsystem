@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# نظام الدرجات المدرسية
 
-## Getting Started
+نظام ويب لإدارة درجات الطلاب مبني بتقنية Next.js 14 مع MongoDB Atlas.
 
-First, run the development server:
+## المميزات
+
+- ✅ إنشاء وتعديل وحذف الفصول
+- ✅ إضافة وتعديل وحذف الطلاب
+- ✅ جدول درجات يشبه جداول البيانات (12 تقييم لكل طالب)
+- ✅ حساب تلقائي للمجموع والمتوسط
+- ✅ حفظ تلقائي مع تأخير 600 مللي ثانية
+- ✅ البحث عن الطلاب بالاسم
+- ✅ ترتيب حسب الاسم أو المتوسط
+- ✅ واجهة عربية RTL
+- ✅ صفحة طباعة A4
+
+## التثبيت
+
+### 1. استنساخ المشروع
+
+```bash
+cd school-grading-app
+```
+
+### 2. تثبيت الحزم
+
+```bash
+npm install
+```
+
+### 3. إعداد قاعدة البيانات
+
+أنشئ ملف `.env.local` في المجلد الرئيسي وأضف:
+
+```
+MONGODB_URI="mongodb+srv://<YOUR_USERNAME>:<YOUR_PASSWORD>@gradingapp.2bejywg.mongodb.net/gradingapp?retryWrites=true&w=majority&appName=gradingapp"
+```
+
+استبدل `<YOUR_USERNAME>` و `<YOUR_PASSWORD>` ببيانات MongoDB Atlas الخاصة بك.
+
+### 4. تشغيل التطبيق
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+افتح المتصفح على: http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## هيكل المشروع
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── classes/
+│   │   │   ├── route.ts          # GET, POST classes
+│   │   │   └── [id]/
+│   │   │       └── route.ts      # PATCH, DELETE class
+│   │   │       └── [classId]/
+│   │   │           └── students/
+│   │   │               └── route.ts  # GET, POST students
+│   │   └── students/
+│   │       └── [id]/
+│   │           └── route.ts      # PATCH, DELETE student
+│   ├── dashboard/
+│   │   └── page.tsx              # Dashboard page
+│   ├── class/
+│   │   └── [classId]/
+│   │       └── page.tsx          # Class grades page
+│   └── print/
+│       └── class/
+│           └── [classId]/
+│               └── page.tsx      # Print view
+├── models/
+│   ├── Class.ts                  # Class model
+│   └── Student.ts                # Student model
+├── lib/
+│   ├── mongodb.ts                # MongoDB connection
+│   └── utils.ts                  # Utilities
+└── components/
+    └── ui/                       # shadcn/ui components
+```
 
-## Learn More
+## التقنيات المستخدمة
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js 14 (App Router)
+- TypeScript
+- TailwindCSS
+- shadcn/ui
+- MongoDB Atlas + Mongoose
+- React Hook Form + Zod
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## الملاحظات
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- الدرجات تتراوح من 0 إلى 10 (يمكن تغييرها في `src/models/Student.ts`)
+- عدد التقييمات 12 (يمكن تغييره في `src/models/Student.ts`)
