@@ -38,7 +38,7 @@ interface ClassInfo {
 
 const GRADES_COUNT = 12;
 const MIN_GRADE = 0;
-const MAX_GRADE = 10;
+const MAX_GRADE = 20;
 
 type SortField = 'name' | 'average';
 type SortOrder = 'asc' | 'desc';

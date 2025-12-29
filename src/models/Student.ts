@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 // Constants - easy to change
 export const GRADES_COUNT = 12;
 export const MIN_GRADE = 0;
-export const MAX_GRADE = 10;
+export const MAX_GRADE = 20;
 
 export interface IStudent extends Document {
     _id: mongoose.Types.ObjectId;
